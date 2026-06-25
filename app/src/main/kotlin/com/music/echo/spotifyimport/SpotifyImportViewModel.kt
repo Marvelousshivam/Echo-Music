@@ -20,6 +20,9 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import iad1tya.echo.music.utils.reportException
 import javax.inject.Inject
+import kotlin.jvm.Volatile
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 @HiltViewModel
 class SpotifyImportViewModel @Inject constructor(
@@ -28,8 +31,20 @@ class SpotifyImportViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(SpotifyImportUiState(isLoading = true))
     val uiState: StateFlow<SpotifyImportUiState> = _uiState.asStateFlow()
 
+    @Volatile
     private var sources: List<SpotifyImportSource> = emptyList()
+    private val sourcesMutex = Mutex()
     private var importJob: Job? = null
+
+    private suspend fun updateSources(
+        updateAction: (List<SpotifyImportSource>) -> Pair<List<SpotifyImportSource>, (SpotifyImportUiState) -> SpotifyImportUiState>
+    ) {
+        sourcesMutex.withLock {
+            val (nextSources, uiStateUpdate) = updateAction(sources)
+            sources = nextSources
+            _uiState.update(uiStateUpdate)
+        }
+    }
 
     init {
         restoreSession()
@@ -102,15 +117,16 @@ class SpotifyImportViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             runCatching { repository.loadSources() }
                 .onSuccess { loadedSources ->
-                    sources = loadedSources
-                    val selectedIds = loadedSources.mapTo(LinkedHashSet()) { it.id }
-                    _uiState.update {
-                        it.copy(
-                            isAuthenticated = true,
-                            sources = loadedSources.map(SpotifyImportSource::toUi),
-                            selectedSourceIds = selectedIds,
-                            isLoading = false,
-                        )
+                    updateSources {
+                        val selectedIds = loadedSources.mapTo(LinkedHashSet()) { it.id }
+                        loadedSources to { state ->
+                            state.copy(
+                                isAuthenticated = true,
+                                sources = loadedSources.map(SpotifyImportSource::toUi),
+                                selectedSourceIds = selectedIds,
+                                isLoading = false,
+                            )
+                        }
                     }
                 }
                 .onFailure { error ->
@@ -133,20 +149,21 @@ class SpotifyImportViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             runCatching { repository.addPlaylistByUrl(trimmed) }
                 .onSuccess { source ->
-                    val existingIndex = sources.indexOfFirst { it.id == source.id }
-                    sources =
-                        if (existingIndex >= 0) {
-                            sources.toMutableList().also { it[existingIndex] = source }
+                    updateSources { currentSources ->
+                        val existingIndex = currentSources.indexOfFirst { it.id == source.id }
+                        val nextSources = if (existingIndex >= 0) {
+                            currentSources.toMutableList().also { it[existingIndex] = source }
                         } else {
-                            listOf(source) + sources
+                            listOf(source) + currentSources
                         }
-                    _uiState.update { state ->
-                        state.copy(
-                            isAuthenticated = true,
-                            sources = sources.map(SpotifyImportSource::toUi),
-                            selectedSourceIds = state.selectedSourceIds + source.id,
-                            isLoading = false,
-                        )
+                        nextSources to { state ->
+                            state.copy(
+                                isAuthenticated = true,
+                                sources = nextSources.map(SpotifyImportSource::toUi),
+                                selectedSourceIds = state.selectedSourceIds + source.id,
+                                isLoading = false,
+                            )
+                        }
                     }
                 }
                 .onFailure { error ->
@@ -190,8 +207,9 @@ class SpotifyImportViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             runCatching { repository.logout() }
                 .onSuccess {
-                    sources = emptyList()
-                    _uiState.update { SpotifyImportUiState() }
+                    updateSources {
+                        emptyList<SpotifyImportSource>() to { SpotifyImportUiState() }
+                    }
                 }
                 .onFailure { error ->
                     if (error is CancellationException) throw error
