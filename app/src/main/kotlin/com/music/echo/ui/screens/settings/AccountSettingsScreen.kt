@@ -61,6 +61,9 @@ fun AccountSettingsScreen(
     val (visitorData, _) = rememberPreference(VisitorDataKey, "")
     val (dataSyncId, _) = rememberPreference(DataSyncIdKey, "")
 
+    val (listenBrainzEnabled, onListenBrainzEnabledChange) = rememberPreference(ListenBrainzEnabledKey, false)
+    val (listenBrainzToken, onListenBrainzTokenChange) = rememberPreference(ListenBrainzTokenKey, "")
+
     val isLoggedIn = remember(innerTubeCookie) {
         "SAPISID" in parseCookieString(innerTubeCookie)
     }
@@ -75,6 +78,7 @@ fun AccountSettingsScreen(
     var showToken by remember { mutableStateOf(false) }
     var showTokenEditor by remember { mutableStateOf(false) }
     var showLogoutDialog by remember { mutableStateOf(false) }
+    var showListenBrainzTokenEditor by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -252,6 +256,41 @@ fun AccountSettingsScreen(
                         icon = painterResource(R.drawable.discord),
                         title = { Text(stringResource(R.string.discord_integration)) },
                         onClick = { navController.navigate("settings/discord") }
+                    ),
+                    Material3SettingsItem(
+                        isHighlighted = (highlightKey == stringResource(R.string.listenbrainz_scrobbling)),
+                        icon = painterResource(R.drawable.token),
+                        title = { Text(stringResource(R.string.listenbrainz_scrobbling)) },
+                        trailingContent = {
+                            Switch(
+                                checked = listenBrainzEnabled,
+                                onCheckedChange = onListenBrainzEnabledChange,
+                                thumbContent = {
+                                    Icon(
+                                        painter = painterResource(
+                                            id = if (listenBrainzEnabled) R.drawable.check else R.drawable.close
+                                        ),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(SwitchDefaults.IconSize),
+                                    )
+                                }
+                            )
+                        },
+                        onClick = { onListenBrainzEnabledChange(!listenBrainzEnabled) }
+                    ),
+                    Material3SettingsItem(
+                        isHighlighted = (highlightKey == stringResource(R.string.set_listenbrainz_token)),
+                        icon = painterResource(R.drawable.edit),
+                        title = {
+                            Text(
+                                if (listenBrainzToken.isBlank()) {
+                                    stringResource(R.string.set_listenbrainz_token)
+                                } else {
+                                    "ListenBrainz token set"
+                                }
+                            )
+                        },
+                        onClick = { showListenBrainzTokenEditor = true }
                     )
                 )
             )
@@ -360,6 +399,25 @@ fun AccountSettingsScreen(
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
             }
+        }
+
+        if (showListenBrainzTokenEditor) {
+            TextFieldDialog(
+                initialTextFieldValue = TextFieldValue(listenBrainzToken),
+                onDone = { data ->
+                    onListenBrainzTokenChange(data)
+                    showListenBrainzTokenEditor = false
+                },
+                onDismiss = { showListenBrainzTokenEditor = false },
+                singleLine = true,
+                maxLines = 1,
+                isInputValid = {
+                    it.isNotEmpty()
+                },
+                extraContent = {
+                    InfoLabel(text = stringResource(R.string.listenbrainz_scrobbling_description))
+                }
+            )
         }
         
         Spacer(Modifier.windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Bottom)))

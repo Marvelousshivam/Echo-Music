@@ -50,7 +50,7 @@ import iad1tya.echo.music.ui.screens.settings.AccountSettingsScreen
 import iad1tya.echo.music.ui.screens.settings.StorageSettings
 import iad1tya.echo.music.ui.screens.settings.ThemeScreen
 import iad1tya.echo.music.ui.screens.settings.AiSettings
-import iad1tya.echo.music.ui.screens.settings.integrations.IntegrationScreen
+
 import iad1tya.echo.music.ui.screens.settings.integrations.ListenTogetherSettings
 import iad1tya.echo.music.ui.screens.recognition.RecognitionScreen
 import iad1tya.echo.music.ui.screens.recognition.RecognitionHistoryScreen
@@ -426,10 +426,6 @@ fun NavGraphBuilder.navigationBuilder(
         arguments = listOf(navArgument("highlightKey") { type = NavType.StringType; nullable = true })
     ) { backStackEntry ->
         BackupAndRestore(navController, scrollBehavior, highlightKey = backStackEntry.arguments?.getString("highlightKey"))
-    }
-
-    composable("settings/integrations") {
-        IntegrationScreen(navController, scrollBehavior)
     }
 
     composable("settings/discord") {

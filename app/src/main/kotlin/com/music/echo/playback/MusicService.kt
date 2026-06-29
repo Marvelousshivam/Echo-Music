@@ -365,6 +365,7 @@ class MusicService :
     private var listenBrainzEnabled = false
     private var listenBrainzToken = ""
     private var listenBrainzCurrentStartTs: Long = 0L
+    private var listenBrainzCurrentMediaId: String? = null
 
     val automixItems = MutableStateFlow<List<MediaItem>>(emptyList())
 
@@ -1782,27 +1783,16 @@ class MusicService :
         discordUpdateJob?.cancel()
 
         scrobbleManager?.onSongStop()
-        if (listenBrainzCurrentStartTs > 0L) {
-            val startTs = listenBrainzCurrentStartTs
-            player.currentMediaItem?.mediaId?.let { mediaId ->
-                scope.launch {
-                    database.song(mediaId).first()?.let { song ->
-                        updateListenBrainz(song, isFinished = true, startMs = startTs, endMs = System.currentTimeMillis())
-                    }
-                }
-            }
-            listenBrainzCurrentStartTs = 0L
-        }
+        checkAndSubmitListenBrainzFinished()
 
         if (player.playWhenReady && player.playbackState == Player.STATE_READY) {
             scrobbleManager?.onSongStart(player.currentMetadata, duration = player.duration)
-            listenBrainzCurrentStartTs = System.currentTimeMillis()
             player.currentMediaItem?.mediaId?.let { mediaId ->
-                scope.launch {
-                    database.song(mediaId).first()?.let { song ->
-                        updateListenBrainz(song, isFinished = false)
-                    }
+                if (listenBrainzCurrentMediaId != mediaId) {
+                    listenBrainzCurrentMediaId = mediaId
+                    listenBrainzCurrentStartTs = System.currentTimeMillis()
                 }
+                checkAndSubmitListenBrainzPlayingNow(mediaId)
             }
         }
 
@@ -1886,17 +1876,7 @@ class MusicService :
 
         if (playbackState == Player.STATE_IDLE || playbackState == Player.STATE_ENDED) {
             scrobbleManager?.onSongStop()
-            if (listenBrainzCurrentStartTs > 0L) {
-                val startTs = listenBrainzCurrentStartTs
-                player.currentMediaItem?.mediaId?.let { mediaId ->
-                    scope.launch {
-                        database.song(mediaId).first()?.let { song ->
-                            updateListenBrainz(song, isFinished = true, startMs = startTs, endMs = System.currentTimeMillis())
-                        }
-                    }
-                }
-                listenBrainzCurrentStartTs = 0L
-            }
+            checkAndSubmitListenBrainzFinished()
         }
     }
 
@@ -1978,6 +1958,18 @@ class MusicService :
         
         if (events.containsAny(Player.EVENT_IS_PLAYING_CHANGED)) {
             scrobbleManager?.onPlayerStateChanged(player.isPlaying, player.currentMetadata, duration = player.duration)
+            
+            if (player.isPlaying) {
+                player.currentMediaItem?.mediaId?.let { mediaId ->
+                    if (listenBrainzCurrentMediaId != mediaId) {
+                        checkAndSubmitListenBrainzFinished()
+                        listenBrainzCurrentMediaId = mediaId
+                        listenBrainzCurrentStartTs = System.currentTimeMillis()
+                        scrobbleManager?.onSongStart(player.currentMetadata, duration = player.duration)
+                    }
+                    checkAndSubmitListenBrainzPlayingNow(mediaId)
+                }
+            }
         }
 
     }
@@ -2575,22 +2567,29 @@ class MusicService :
         }
     }
 
-    private fun updateListenBrainz(song: Song, isFinished: Boolean, startMs: Long = 0, endMs: Long = 0, positionMs: Long = 0) {
-        if (!listenBrainzEnabled || listenBrainzToken.isBlank()) return
+    private fun updateListenBrainz(title: String, artistNames: String, releaseName: String, durationMs: Long, isFinished: Boolean, startMs: Long = 0, endMs: Long = 0, positionMs: Long = 0) {
+        val cleanToken = listenBrainzToken.trim()
+        if (!listenBrainzEnabled || cleanToken.isBlank()) return
         scope.launch {
             if (isFinished) {
                 com.music.echo.ui.screens.settings.ListenBrainzManager.submitFinished(
                     context = this@MusicService,
-                    token = listenBrainzToken,
-                    song = song,
+                    token = cleanToken,
+                    title = title,
+                    artistNames = artistNames,
+                    releaseName = releaseName,
+                    durationMs = durationMs,
                     startMs = startMs,
                     endMs = endMs
                 )
             } else {
                 com.music.echo.ui.screens.settings.ListenBrainzManager.submitPlayingNow(
                     context = this@MusicService,
-                    token = listenBrainzToken,
-                    song = song,
+                    token = cleanToken,
+                    title = title,
+                    artistNames = artistNames,
+                    releaseName = releaseName,
+                    durationMs = durationMs,
                     positionMs = positionMs
                 )
             }
@@ -3426,6 +3425,45 @@ class MusicService :
                     }
                 }
             }
+        }
+    }
+
+    private fun checkAndSubmitListenBrainzFinished() {
+        listenBrainzCurrentMediaId?.let { mediaId ->
+            val startTs = listenBrainzCurrentStartTs
+            if (startTs > 0) {
+                scope.launch {
+                    val mediaMetadata = player.mediaItems.find { it.mediaId == mediaId }?.metadata
+                    val dbSong = if (mediaMetadata == null) database.song(mediaId).firstOrNull() else null
+                    
+                    val title = mediaMetadata?.title ?: dbSong?.song?.title ?: return@launch
+                    val artistNames = mediaMetadata?.artists?.joinToString(" & ") { it.name } 
+                        ?: dbSong?.artists?.joinToString(" & ") { it.name } ?: ""
+                    val releaseName = mediaMetadata?.album?.title ?: dbSong?.album?.title ?: ""
+                    val durationMs = mediaMetadata?.duration?.takeIf { it != -1 }?.times(1000L) 
+                        ?: dbSong?.song?.duration?.takeIf { it != -1 }?.times(1000L) ?: 0L
+
+                    updateListenBrainz(title, artistNames, releaseName, durationMs, isFinished = true, startMs = startTs, endMs = System.currentTimeMillis())
+                }
+            }
+        }
+        listenBrainzCurrentStartTs = 0L
+        listenBrainzCurrentMediaId = null
+    }
+
+    private fun checkAndSubmitListenBrainzPlayingNow(mediaId: String) {
+        scope.launch {
+            val mediaMetadata = player.mediaItems.find { it.mediaId == mediaId }?.metadata
+            val dbSong = if (mediaMetadata == null) database.song(mediaId).firstOrNull() else null
+            
+            val title = mediaMetadata?.title ?: dbSong?.song?.title ?: return@launch
+            val artistNames = mediaMetadata?.artists?.joinToString(" & ") { it.name } 
+                ?: dbSong?.artists?.joinToString(" & ") { it.name } ?: ""
+            val releaseName = mediaMetadata?.album?.title ?: dbSong?.album?.title ?: ""
+            val durationMs = mediaMetadata?.duration?.takeIf { it != -1 }?.times(1000L) 
+                ?: dbSong?.song?.duration?.takeIf { it != -1 }?.times(1000L) ?: 0L
+
+            updateListenBrainz(title, artistNames, releaseName, durationMs, isFinished = false)
         }
     }
 }
