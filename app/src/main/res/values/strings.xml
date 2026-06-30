@@ -488,5 +488,7 @@
     <string name="listenbrainz_scrobbling_description">Automatically submit your listened tracks to ListenBrainz</string>
     <string name="export_directory_unavailable">Unable to access an export directory on this device. Please set one manually.</string>
     <string name="set_listenbrainz_token">Set ListenBrainz Token</string>
-
+    <!-- Update Moto Dialog -->
+    <string name="update_moto_title">Motto of the update</string>
+    <string name="update_moto_content">In a relationship, respect matters just as much as loyalty — maybe even more, because it\'s harder to maintain.\n\nLoyalty means staying faithful and keeping your commitments. Respect means how you actually treat your partner day to day — valuing their opinions, their time, their boundaries, and their voice in decisions.\n\nYou can be loyal and still be disrespectful: never cheating, but constantly dismissing what they say or making them feel small. That\'s not a healthy relationship — it\'s just an obligation.\n\nReal loyalty without respect is hollow. Respect is what makes loyalty actually mean something.</string>
 </resources>

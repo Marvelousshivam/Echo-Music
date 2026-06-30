@@ -171,6 +171,7 @@ import iad1tya.echo.music.constants.PureBlackKey
 import iad1tya.echo.music.constants.SYSTEM_DEFAULT
 import iad1tya.echo.music.constants.SelectedThemeColorKey
 import iad1tya.echo.music.constants.StopMusicOnTaskClearKey
+import iad1tya.echo.music.constants.UpdateMotoDialogShownKey
 import iad1tya.echo.music.constants.UseNewMiniPlayerDesignKey
 import iad1tya.echo.music.db.MusicDatabase
 import iad1tya.echo.music.db.entities.SearchHistory
@@ -194,6 +195,7 @@ import iad1tya.echo.music.ui.player.BottomSheetPlayer
 import iad1tya.echo.music.ui.screens.Screens
 import iad1tya.echo.music.ui.screens.SettingDialoge
 import iad1tya.echo.music.ui.screens.WelcomeDialog
+import iad1tya.echo.music.ui.screens.UpdateMotoDialog
 import iad1tya.echo.music.ui.screens.navigationBuilder
 import iad1tya.echo.music.ui.screens.settings.DarkMode
 import iad1tya.echo.music.ui.screens.settings.NavigationTab
@@ -779,9 +781,18 @@ class MainActivity : ComponentActivity() {
                 val (lastOpenedVersionCode, setLastOpenedVersionCode) = rememberPreference(iad1tya.echo.music.constants.LastOpenedVersionCodeKey, -1)
                 var showWelcomeDialog by remember { mutableStateOf(false) }
 
+                val (updateMotoDialogShown, setUpdateMotoDialogShown) = rememberPreference(UpdateMotoDialogShownKey, false)
+                var showUpdateMotoDialog by remember { mutableStateOf(false) }
+
                 LaunchedEffect(lastOpenedVersionCode) {
                     if (lastOpenedVersionCode < BuildConfig.VERSION_CODE) {
                         showWelcomeDialog = true
+                    }
+                }
+
+                LaunchedEffect(updateMotoDialogShown) {
+                    if (!updateMotoDialogShown) {
+                        showUpdateMotoDialog = true
                     }
                 }
 
@@ -1248,6 +1259,15 @@ class MainActivity : ComponentActivity() {
                             onDismissRequest = {
                                 showWelcomeDialog = false
                                 setLastOpenedVersionCode(BuildConfig.VERSION_CODE)
+                            }
+                        )
+                    }
+
+                    if (showUpdateMotoDialog) {
+                        UpdateMotoDialog(
+                            onDismissRequest = {
+                                showUpdateMotoDialog = false
+                                setUpdateMotoDialogShown(true)
                             }
                         )
                     }

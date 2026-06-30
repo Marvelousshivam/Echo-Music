@@ -33,3 +33,4 @@
 - Fixed local song thumbnails not displaying correctly in the player and song lists. ([#658](https://github.com/EchoMusicApp/Echo-Music/pull/658))
 - Fixed a crash when launching the export directory picker on devices without a compatible document picker; the app now falls back to its default export folder. ([#663](https://github.com/EchoMusicApp/Echo-Music/pull/663))
 - Fixed a database migration crash caused by a duplicate `provider` column on certain upgrade paths. ([#664](https://github.com/EchoMusicApp/Echo-Music/pull/664))
+- Fixed crash (duplicate column name: provider) during database migration from version 29 to 30.

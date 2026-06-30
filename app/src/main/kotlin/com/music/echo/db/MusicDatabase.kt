@@ -704,18 +704,26 @@ val MIGRATION_29_30 = object : Migration(29, 30) {
 
         // Add the isVideo column only if it does not already exist
         if (!hasColumn(db, "song", "isVideo")) {
-            db.execSQL(
-                "ALTER TABLE song ADD COLUMN isVideo INTEGER NOT NULL DEFAULT 0"
-            )
+            try {
+                db.execSQL(
+                    "ALTER TABLE song ADD COLUMN isVideo INTEGER NOT NULL DEFAULT 0"
+                )
+            } catch (e: Exception) {
+                Timber.tag("MIGRATION_29_30").w(e, "Column isVideo may already exist despite hasColumn check")
+            }
         }
 
         // Add the provider column only if it does not already exist.
         // This prevents crashes for databases that already contain the
         // provider column due to previous migration inconsistencies.
         if (!hasColumn(db, "lyrics", "provider")) {
-            db.execSQL(
-                "ALTER TABLE lyrics ADD COLUMN provider TEXT NOT NULL DEFAULT 'Unknown'"
-            )
+            try {
+                db.execSQL(
+                    "ALTER TABLE lyrics ADD COLUMN provider TEXT NOT NULL DEFAULT 'Unknown'"
+                )
+            } catch (e: Exception) {
+                Timber.tag("MIGRATION_29_30").w(e, "Column provider may already exist despite hasColumn check")
+            }
         }
 
         // Recreate the dropped views

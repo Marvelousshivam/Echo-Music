@@ -167,6 +167,8 @@ val ListenTogetherSmartResyncKey = booleanPreferencesKey("listenTogetherSmartRes
 val ListenTogetherBlockedUsersKey = stringPreferencesKey("listenTogetherBlockedUsers")
 val ListenTogetherInTopBarKey = booleanPreferencesKey("listenTogetherInTopBar")
 
+val UpdateMotoDialogShownKey = booleanPreferencesKey("updateMotoDialogShown")
+
 val ListenTogetherSessionTokenKey = stringPreferencesKey("listenTogetherSessionToken")
 val ListenTogetherRoomCodeKey = stringPreferencesKey("listenTogetherRoomCode")
 val ListenTogetherUserIdKey = stringPreferencesKey("listenTogetherUserId")
