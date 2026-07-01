@@ -1,4 +1,4 @@
-Echo Music v5.2.3
+Echo Music v5.2.4
 
 Performance
 Faster playback startup by pre-warming the JavaScript engine on app launch and reducing ExoPlayer's initial buffer threshold to 750ms.
