@@ -1,5 +1,6 @@
 # Echo Music v5.2.4
 
+- Moved JioSaavn API server configuration to a remote JSON file for dynamic load balancing and updates without requiring an app update.
 - Fixed compilation errors in ListenTogether screen and player menu.
 - Added an Apple Music-style dynamic zoom and fade transition for album art when changing songs.
 - Added a dynamic crossfade indicator with a shining animation on the player screen to visually indicate when songs are crossfading.
