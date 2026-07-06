@@ -1,5 +1,6 @@
 # Echo Music v5.2.4
 
+- Added a floating import button to the Library screen to import playlists from Spotify or YouTube Music via URL.
 - Fixed the missing "Set as Ringtone" option in the Apple-inspired player menu.
 - Updated the "Refetch" option description to clarify that it refetches the stream from YouTube Music.
 - Extracted the "Allow participants to control music" option from the Room Code card into its own independent settings card in the Listen Together menu.
